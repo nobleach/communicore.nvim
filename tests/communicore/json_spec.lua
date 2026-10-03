@@ -1,0 +1,70 @@
+local json = require("communicore.json")
+
+describe("json", function()
+  it("decodes objects", function()
+    local value = json.decode('{"token": "abc123", "expires_in": 3600}')
+    assert.are.equal("abc123", value.token)
+    assert.are.equal(3600, value.expires_in)
+  end)
+
+  it("decodes nested objects and arrays", function()
+    local value = json.decode('{"data": {"items": [{"id": 1}, {"id": 2}]}}')
+    assert.are.equal(1, value.data.items[1].id)
+    assert.are.equal(2, value.data.items[2].id)
+  end)
+
+  it("decodes arrays at the top level", function()
+    local value = json.decode('[1, "two", true]')
+    assert.are.equal(1, value[1])
+    assert.are.equal("two", value[2])
+    assert.are.equal(true, value[3])
+  end)
+
+  it("decodes literals", function()
+    assert.are.equal(true, json.decode("true"))
+    assert.are.equal(false, json.decode("false"))
+    assert.is_nil(json.decode("null"))
+    assert.are.equal(42, json.decode("42"))
+    assert.are.equal("hi", json.decode('"hi"'))
+  end)
+
+  it("decodes numbers", function()
+    assert.are.equal(-12.5, json.decode("-12.5"))
+    assert.are.equal(1e3, json.decode("1e3"))
+    assert.are.equal(1.5e-2, json.decode("1.5e-2"))
+  end)
+
+  it("decodes string escapes", function()
+    assert.are.equal('a"b\\c', json.decode('"a\\"b\\\\c"'))
+    assert.are.equal("tab\tnewline\n", json.decode('"tab\\tnewline\\n"'))
+  end)
+
+  it("decodes \\u escapes", function()
+    assert.are.equal("café", json.decode('"caf\\u00e9"'))
+  end)
+
+  it("tolerates surrounding whitespace", function()
+    assert.are.equal(1, json.decode('  { "a" : 1 }  ').a)
+  end)
+
+  it("decodes empty containers", function()
+    assert.are.same({}, json.decode("{}"))
+    assert.are.same({}, json.decode("[]"))
+  end)
+
+  it("returns nil and an error on invalid input", function()
+    local value, err = json.decode("{not json")
+    assert.is_nil(value)
+    assert.is_string(err)
+
+    assert.is_nil(json.decode(""))
+    assert.is_nil(json.decode("plain text"))
+    assert.is_nil(json.decode('{"a": 1} trailing'))
+  end)
+
+  it("decodes a JWT-style auth response", function()
+    local body = '{"access_token":"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.dummysig","token_type":"Bearer"}'
+    local value = json.decode(body)
+    assert.are.equal("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.dummysig", value.access_token)
+  end)
+end)
