@@ -9,6 +9,9 @@ An HTTP client for Neovim built on the [.http file format](https://http-files.or
 - `#` and `//` comments
 - File variables: `@name = value` definitions and `{{name}}` substitution in URLs, headers and bodies
 - Named environments via dotenv files: `.env` for shared defaults, `.env.<name>` per environment
+- Named requests and response chaining: `# @name login`, then reference the stored response with
+  `{{login.response.body.$.token}}` (jq-style paths), `{{login.response.headers.X}}` or
+  `{{login.response.body.*}}`
 - Multi-line URLs and query parameters, multi-line header values
 - URL-encoded form bodies spread over multiple lines (`a=1` / `&b=2`)
 - Pluggable transport layer (ships with a `curl` transport)
@@ -70,7 +73,33 @@ Environment variables come from dotenv files next to the `.http` file (falling b
 - `.env` — shared defaults, always loaded
 - `.env.<name>` — loaded when environment `<name>` is active, overriding shared values
 
-Variable precedence (highest first): in-file `@var = value` → `.env.<name>` → `.env`.
+Variable precedence (highest first): in-file `@var` → `.env.<name>` → `.env`.
+
+### Response chaining
+
+Name a request with `# @name` and later requests can reference its response (VS Code REST Client syntax,
+with jq-style paths — dot-separated keys and 0-based array indices):
+
+```http
+# @name login
+POST https://api.example.com/auth
+Content-Type: application/json
+
+{"user": "admin", "password": "secret"}
+
+###
+GET https://api.example.com/protected
+Authorization: Bearer {{login.response.body.$.access_token}}
+```
+
+Supported reference forms:
+
+- `{{name.response.body.$.path}}` / `{{name.response.body.path}}` — path into a JSON response body
+- `{{name.response.body.*}}` — entire raw response body
+- `{{name.response.headers.Header-Name}}` — response header (case-insensitive)
+- `{{name.request.body.*}}` / `{{name.request.headers.Header-Name}}` — the original request
+
+Responses are stored in memory for the Neovim session after a named request runs.
 
 ## Configuration
 
@@ -95,6 +124,9 @@ lua/communicore/
   parser.lua            -- .http file parser (pure Lua)
   variables.lua         -- {{variable}} substitution (pure Lua)
   environment.lua       -- dotenv loading + env/file var precedence (pure Lua)
+  json.lua              -- minimal JSON decoder (pure Lua, decode only)
+  store.lua             -- in-session named request/response store (pure Lua)
+  references.lua        -- {{name.response.body.$.path}} resolution (pure Lua)
   transport/init.lua  -- pluggable transport registry
   transport/curl.lua  -- curl transport
   ui.lua              -- response split window

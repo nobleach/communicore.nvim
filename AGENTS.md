@@ -6,7 +6,7 @@ communicore.nvim — a Neovim HTTP client for the [.http file format](https://ht
 
 ## Conventions
 
-- **Pure Lua where possible**: `lua/communicore/parser.lua`, `lua/communicore/variables.lua` and `lua/communicore/environment.lua` must not use the `vim` API (`io` is fine), so they stay testable under plain busted and portable outside Neovim.
+- **Pure Lua where possible**: `lua/communicore/parser.lua`, `lua/communicore/variables.lua`, `lua/communicore/environment.lua`, `lua/communicore/json.lua`, `lua/communicore/store.lua` and `lua/communicore/references.lua` must not use the `vim` API (`io` is fine), so they stay testable under plain busted and portable outside Neovim.
 - **Pluggable transport**: request execution goes through `communicore.transport` (`register`/`get`). New transports implement `execute(req, opts, callback)` where callback receives `(resp, err)`.
 - **Tests first**: new spec features get a failing spec in `tests/communicore/` before implementation.
 - Formatting: `.stylua.toml` (2-space indent, double quotes, 120 columns).
@@ -18,9 +18,10 @@ communicore.nvim — a Neovim HTTP client for the [.http file format](https://ht
 
 ## Scope notes
 
-- Deferred to later iterations: gRPC, GraphQL, `http-client.env.json` (JetBrains env format), dynamic variables (`$timestamp` etc.), response handler scripts (`> {% ... %}` — the parser already terminates the body at `>`), pre-request scripts, cookies/proxy/SSL options, `{{%var}}` percent-encoding substitution.
+- Deferred to later iterations: gRPC, GraphQL, `http-client.env.json` (JetBrains env format), dynamic variables (`$timestamp` etc.), response handler scripts (`> {% ... %}` — the parser already terminates the body at `>`), pre-request scripts, cookies/proxy/SSL options, `{{%var}}` percent-encoding substitution, XPath references (`{{name.response.body.//xpath}}`), JSON encoding (references into non-scalar JSON values resolve to nil).
 - File variables follow JetBrains semantics: an `@var = value` line only applies to requests declared after it.
 - Environments follow the dotenv-flow convention: `.env` (shared) + `.env.<name>` (selected env overrides). Precedence: in-file `@var` > `.env.<name>` > `.env`. Env files are resolved relative to the `.http` file's directory, falling back to cwd.
+- Response chaining: `# @name` names a request; its request/response pair is stored in-memory after it runs. References follow VS Code syntax (`{{name.response.body.$.path}}`) with jq-style paths (0-based arrays); the `$` is optional.
 
 ## Structure
 
@@ -31,6 +32,9 @@ lua/communicore/
   parser.lua          -- .http file parser (pure Lua)
   variables.lua       -- {{variable}} substitution (pure Lua)
   environment.lua     -- dotenv loading + env/file var precedence (pure Lua)
+  json.lua            -- minimal JSON decoder (pure Lua, decode only)
+  store.lua           -- in-session named request/response store (pure Lua)
+  references.lua      -- {{name.response.body.$.path}} resolution (pure Lua)
   transport/init.lua  -- transport registry
   transport/curl.lua  -- curl transport (build_command/parse_response are pure)
   ui.lua              -- response split window
