@@ -189,6 +189,11 @@ function M.parse(content)
     elseif current and state == "handler" then
       -- Response handlers are not supported yet; ignore their content.
     elseif is_comment(line) or is_blank(line) then
+      -- # @name / // @name metadata names the next request.
+      local meta = line:match("^%s*#%s*@name%s+(%S+)") or line:match("^%s*//%s*@name%s+(%S+)")
+      if meta and not current then
+        pending_name = meta
+      end
       if current and state == "headers" and is_blank(line) then
         state = "body"
       end

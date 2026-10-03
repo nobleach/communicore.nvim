@@ -264,6 +264,34 @@ describe("parser", function()
       assert.are.equal("Create a new user", requests[2].name)
     end)
 
+    it("supports # @name metadata", function()
+      local requests = parse(table.concat({
+        "# @name login",
+        "POST https://example.com/auth",
+        "###",
+        "GET https://example.com/users",
+      }, "\n"))
+      assert.are.equal("login", requests[1].name)
+      assert.is_nil(requests[2].name)
+    end)
+
+    it("supports // @name metadata", function()
+      local requests = parse(table.concat({
+        "// @name login",
+        "POST https://example.com/auth",
+      }, "\n"))
+      assert.are.equal("login", requests[1].name)
+    end)
+
+    it("lets @name take precedence over the ### title", function()
+      local requests = parse(table.concat({
+        "### Login request",
+        "# @name login",
+        "POST https://example.com/auth",
+      }, "\n"))
+      assert.are.equal("login", requests[1].name)
+    end)
+
     it("ignores # comment lines", function()
       local requests = parse(table.concat({
         "# This is a comment",
