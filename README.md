@@ -1,47 +1,104 @@
-# A Neovim Plugin Template
+# communicore.nvim
 
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/ellisonleao/nvim-plugin-template/lint-test.yml?branch=main&style=for-the-badge)
-![Lua](https://img.shields.io/badge/Made%20with%20Lua-blueviolet.svg?style=for-the-badge&logo=lua)
+An HTTP client for Neovim built on the [.http file format](https://http-files.org/spec/basics/) — in the spirit of [kulala.nvim](https://github.com/dont-be-evil-company/kulala.nvim), but 100% Lua with no external core binary. The only runtime dependency is `curl`.
 
-A template repository for Neovim plugins.
+## Features
 
-## Using it
+- Run HTTP requests (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`, ...) directly from `.http` / `.rest` buffers
+- Multiple requests per file, separated by `###` (with optional titles)
+- `#` and `//` comments
+- File variables: `@name = value` definitions and `{{name}}` substitution in URLs, headers and bodies
+- Multi-line URLs and query parameters, multi-line header values
+- URL-encoded form bodies spread over multiple lines (`a=1` / `&b=2`)
+- Pluggable transport layer (ships with a `curl` transport)
+- Response shown in a split with status line, headers and syntax-highlighted body
 
-Via `gh`:
+Planned for later iterations: environment files (`http-client.env.json`), dynamic variables, request metadata (`@name`, `@no-redirect`), response handlers and pre-request scripts, GraphQL and gRPC.
+
+## Requirements
+
+- Neovim >= 0.10
+- `curl` in `$PATH`
+
+## Installation
+
+Via [lazy.nvim](https://github.com/folke/lazy.nvim):
+
+```lua
+require("lazy").setup({
+  {
+    "nobleach/communicore.nvim",
+    ft = { "http", "rest" },
+    opts = {},
+    keys = {
+      { "<leader>hh", function() require("communicore").run() end, ft = "http", desc = "Run request" },
+      { "<leader>ha", function() require("communicore").run_all() end, ft = "http", desc = "Run all requests" },
+    },
+  },
+})
+```
+
+## Usage
+
+Given a file `requests.http`:
+
+```http
+@host = api.example.com
+
+### Get a user
+GET https://{{host}}/users/1
+Accept: application/json
+
+### Create a user
+POST https://{{host}}/users
+Content-Type: application/json
+
+{
+  "name": "New User"
+}
+```
+
+- `:CommunicoreRun` (or `require("communicore").run()`) runs the request under the cursor.
+- `:CommunicoreRunAll` (or `require("communicore").run_all()`) runs every request in the buffer.
+
+## Configuration
+
+```lua
+require("communicore").setup({
+  -- Transport: "curl" or a custom implementation table:
+  -- { execute = function(req, opts, callback) ... callback(resp, err) end }
+  transport = "curl",
+  -- Where to open the response window: "right", "left", "above", "below"
+  split = "right",
+})
+```
+
+## Project layout
 
 ```
-$ gh repo create my-plugin -p ellisonleao/nvim-plugin-template
+lua/communicore/
+  init.lua            -- public API: setup, run, run_all
+  config.lua          -- defaults + user config merge
+  parser.lua          -- .http file parser (pure Lua)
+  variables.lua       -- {{variable}} substitution (pure Lua)
+  transport/init.lua  -- pluggable transport registry
+  transport/curl.lua  -- curl transport
+  ui.lua              -- response split window
+plugin/communicore.lua -- user commands
+ftdetect/http.lua      -- .http/.rest filetype detection
+tests/                 -- plenary busted specs
 ```
 
-Via github web page:
+## Development
 
-Click on `Use this template`
-
-![](https://docs.github.com/assets/cb-36544/images/help/repository/use-this-template-button.png)
-
-## Features and structure
-
-- 100% Lua
-- Github actions for:
-  - running tests using [plenary.nvim](https://github.com/nvim-lua/plenary.nvim) and [busted](https://olivinelabs.com/busted/)
-  - check for formatting errors (Stylua)
-  - vimdocs autogeneration from README.md file
-  - luarocks release (LUAROCKS_API_KEY secret configuration required)
-
-### Plugin structure
+Tests use [plenary.nvim](https://github.com/nvim-lua/plenary.nvim) busted-style specs:
 
 ```
-.
-├── lua
-│   ├── plugin_name
-│   │   └── module.lua
-│   └── plugin_name.lua
-├── Makefile
-├── plugin
-│   └── plugin_name.lua
-├── README.md
-├── tests
-│   ├── minimal_init.lua
-│   └── plugin_name
-│       └── plugin_name_spec.lua
+make test
 ```
+
+Formatting follows `.stylua.toml` (`stylua lua tests`).
+
+## License
+
+MIT
