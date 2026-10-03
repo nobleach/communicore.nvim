@@ -84,6 +84,8 @@ function M.show(resp, err)
   if win == -1 then
     open_window()
     vim.api.nvim_win_set_buf(0, bufnr)
+    -- Keep editing focus in the source buffer.
+    vim.cmd("wincmd p")
   end
 end
 
