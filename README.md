@@ -8,12 +8,13 @@ An HTTP client for Neovim built on the [.http file format](https://http-files.or
 - Multiple requests per file, separated by `###` (with optional titles)
 - `#` and `//` comments
 - File variables: `@name = value` definitions and `{{name}}` substitution in URLs, headers and bodies
+- Named environments via dotenv files: `.env` for shared defaults, `.env.<name>` per environment
 - Multi-line URLs and query parameters, multi-line header values
 - URL-encoded form bodies spread over multiple lines (`a=1` / `&b=2`)
 - Pluggable transport layer (ships with a `curl` transport)
 - Response shown in a split with status line, headers and syntax-highlighted body
 
-Planned for later iterations: environment files (`http-client.env.json`), dynamic variables, request metadata (`@name`, `@no-redirect`), response handlers and pre-request scripts, GraphQL and gRPC.
+Planned for later iterations: `http-client.env.json` (JetBrains format), dynamic variables, request metadata (`@name`, `@no-redirect`), response handlers and pre-request scripts, GraphQL and gRPC.
 
 ## Requirements
 
@@ -60,6 +61,16 @@ Content-Type: application/json
 
 - `:CommunicoreRun` (or `require("communicore").run()`) runs the request under the cursor.
 - `:CommunicoreRunAll` (or `require("communicore").run_all()`) runs every request in the buffer.
+- `:CommunicoreEnv qa` (or `require("communicore").set_env("qa")`) selects the active environment; `:CommunicoreEnv` shows it.
+
+### Environments
+
+Environment variables come from dotenv files next to the `.http` file (falling back to the current working directory), following the dotenv-flow / Next.js / Vite convention:
+
+- `.env` — shared defaults, always loaded
+- `.env.<name>` — loaded when environment `<name>` is active, overriding shared values
+
+Variable precedence (highest first): in-file `@var = value` → `.env.<name>` → `.env`.
 
 ## Configuration
 
@@ -70,6 +81,8 @@ require("communicore").setup({
   transport = "curl",
   -- Where to open the response window: "right", "left", "above", "below"
   split = "right",
+  -- Active environment name; reads .env and .env.<name>
+  env = nil,
 })
 ```
 
@@ -79,8 +92,9 @@ require("communicore").setup({
 lua/communicore/
   init.lua            -- public API: setup, run, run_all
   config.lua          -- defaults + user config merge
-  parser.lua          -- .http file parser (pure Lua)
-  variables.lua       -- {{variable}} substitution (pure Lua)
+  parser.lua            -- .http file parser (pure Lua)
+  variables.lua         -- {{variable}} substitution (pure Lua)
+  environment.lua       -- dotenv loading + env/file var precedence (pure Lua)
   transport/init.lua  -- pluggable transport registry
   transport/curl.lua  -- curl transport
   ui.lua              -- response split window
