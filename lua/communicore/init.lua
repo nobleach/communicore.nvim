@@ -4,6 +4,8 @@
 local config = require("communicore.config")
 local environment = require("communicore.environment")
 local parser = require("communicore.parser")
+local references = require("communicore.references")
+local store = require("communicore.store")
 local transport = require("communicore.transport")
 local ui = require("communicore.ui")
 local variables = require("communicore.variables")
@@ -35,10 +37,24 @@ end
 ---@param req communicore.Request
 local function run_request(req)
   local env_vars = environment.load(env_dir(), config.options.env)
-  req.variables = environment.resolve(env_vars, req.variables)
+  local vars = environment.resolve(env_vars, req.variables)
+  -- Resolve named request references ({{name.response.body.$.path}} etc.)
+  -- against responses stored from earlier runs in this session.
+  for ref in pairs(references.collect(req)) do
+    local value = references.resolve(ref, store)
+    if value ~= nil then
+      vars[ref] = value
+    else
+      vim.notify(("communicore: cannot resolve {{%s}} — has the named request run?"):format(ref), vim.log.levels.WARN)
+    end
+  end
+  req.variables = vars
   local resolved = variables.substitute_request(req)
   local impl = transport.get(config.options.transport)
   impl.execute(resolved, {}, function(resp, err)
+    if resp and resolved.name then
+      store.save(resolved.name, { request = resolved, response = resp })
+    end
     ui.show(resp, err)
   end)
 end
