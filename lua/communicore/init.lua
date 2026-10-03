@@ -2,6 +2,7 @@
 ---https://http-files.org/spec/basics/
 
 local config = require("communicore.config")
+local environment = require("communicore.environment")
 local parser = require("communicore.parser")
 local transport = require("communicore.transport")
 local ui = require("communicore.ui")
@@ -20,13 +21,37 @@ local function get_requests()
   return parser.parse(table.concat(lines, "\n"))
 end
 
+---Directory used to resolve .env files: the buffer's directory,
+---falling back to the current working directory for unsaved buffers.
+---@return string
+local function env_dir()
+  local name = vim.api.nvim_buf_get_name(0)
+  if name == "" then
+    return vim.fn.getcwd()
+  end
+  return vim.fn.fnamemodify(name, ":h")
+end
+
 ---@param req communicore.Request
 local function run_request(req)
+  local env_vars = environment.load(env_dir(), config.options.env)
+  req.variables = environment.resolve(env_vars, req.variables)
   local resolved = variables.substitute_request(req)
   local impl = transport.get(config.options.transport)
   impl.execute(resolved, {}, function(resp, err)
     ui.show(resp, err)
   end)
+end
+
+---Selects the active environment (reads .env and .env.<name>).
+---@param name string|nil
+function M.set_env(name)
+  config.options.env = name ~= "" and name or nil
+end
+
+---@return string|nil the active environment name
+function M.get_env()
+  return config.options.env
 end
 
 ---Runs the request under the cursor.
