@@ -15,7 +15,8 @@ An HTTP client for Neovim built on the [.http file format](https://http-files.or
 - Multi-line URLs and query parameters, multi-line header values
 - URL-encoded form bodies spread over multiple lines (`a=1` / `&b=2`)
 - Pluggable transport layer (ships with a `curl` transport)
-- Response shown in a split with status line, headers and syntax-highlighted body
+- Response shown in a split with status line, headers and pretty-printed, syntax-highlighted body
+- Jump between requests (`next_request()` / `prev_request()`) via tree-sitter, with a built-in fallback
 
 Planned for later iterations: `http-client.env.json` (JetBrains format), dynamic variables, request metadata (`@name`, `@no-redirect`), response handlers and pre-request scripts, GraphQL and gRPC.
 
@@ -23,6 +24,7 @@ Planned for later iterations: `http-client.env.json` (JetBrains format), dynamic
 
 - Neovim >= 0.10
 - `curl` in `$PATH`
+- Optional: the `http` tree-sitter grammar (`:TSInstall http`) for request navigation — without it, jumping falls back to the built-in parser
 
 ## Installation
 
@@ -37,6 +39,8 @@ require("lazy").setup({
     keys = {
       { "<leader>hh", function() require("communicore").run() end, ft = "http", desc = "Run request" },
       { "<leader>ha", function() require("communicore").run_all() end, ft = "http", desc = "Run all requests" },
+      { "]r", function() require("communicore").next_request() end, ft = "http", desc = "Next request" },
+      { "[r", function() require("communicore").prev_request() end, ft = "http", desc = "Previous request" },
     },
   },
 })
@@ -65,6 +69,7 @@ Content-Type: application/json
 - `:CommunicoreRun` (or `require("communicore").run()`) runs the request under the cursor.
 - `:CommunicoreRunAll` (or `require("communicore").run_all()`) runs every request in the buffer.
 - `:CommunicoreEnv qa` (or `require("communicore").set_env("qa")`) selects the active environment; `:CommunicoreEnv` shows it.
+- `require("communicore").next_request()` / `.prev_request()` jump to the next/previous request — map them yourself, e.g. `]r` / `[r`.
 
 ### Environments
 

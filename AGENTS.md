@@ -36,6 +36,7 @@ lua/communicore/
   format.lua          -- JSON pretty printer, re-indents raw text (pure Lua)
   store.lua           -- in-session named request/response store (pure Lua)
   references.lua      -- {{name.response.body.$.path}} resolution (pure Lua)
+  navigate.lua        -- next/prev request jumps (tree-sitter, falls back to parser.lua)
   transport/init.lua  -- transport registry
   transport/curl.lua  -- curl transport (build_command/parse_response are pure)
   ui.lua              -- response split window

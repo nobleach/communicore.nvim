@@ -3,6 +3,7 @@
 
 local config = require("communicore.config")
 local environment = require("communicore.environment")
+local navigate = require("communicore.navigate")
 local parser = require("communicore.parser")
 local references = require("communicore.references")
 local store = require("communicore.store")
@@ -68,6 +69,18 @@ end
 ---@return string|nil the active environment name
 function M.get_env()
   return config.options.env
+end
+
+---Jumps to the first request starting after the cursor.
+---Map it yourself, e.g. `vim.keymap.set("n", "]r", require("communicore").next_request)`.
+function M.next_request()
+  navigate.next_request()
+end
+
+---Jumps to the request starting before the cursor; when the cursor is inside
+---a request block, jumps to that request's start.
+function M.prev_request()
+  navigate.prev_request()
 end
 
 ---Runs the request under the cursor.
