@@ -1,6 +1,16 @@
+<p align="center">
+  <img src="logo.svg" alt="communicore.nvim" width="220">
+</p>
+
 # communicore.nvim
 
 An HTTP client for Neovim built on the [.http file format](https://http-files.org/spec/basics/) — in the spirit of [kulala.nvim](https://github.com/dont-be-evil-company/kulala.nvim), but 100% Lua with no external core binary. The only runtime dependency is `curl`.
+
+## Rationale
+
+I enjoyed using Kulala until it went private. I needed a simple REST client for NeoVim. After trying a couple of the others, nothing really hit.
+
+This repo is complete donationware. You're free to do whatever you want with it. Use it. Make fun of it. Fork it and make it 100x better. It suits me. If you have problems with it, fixes are welcome. If you have feature requests, PRs are welcome. If you need support, read the source and figure out how it works. It shells out to `curl`. I did build it with the plan to allow pluggable backends but, `curl` is fairly ubiquitous.
 
 ## Features
 
@@ -18,7 +28,7 @@ An HTTP client for Neovim built on the [.http file format](https://http-files.or
 - Response shown in a split with status line, headers and pretty-printed, syntax-highlighted body
 - Jump between requests (`next_request()` / `prev_request()`) via tree-sitter, with a built-in fallback
 
-Planned for later iterations: `http-client.env.json` (JetBrains format), dynamic variables, request metadata (`@name`, `@no-redirect`), response handlers and pre-request scripts, GraphQL and gRPC.
+Planned for later iterations: `http-client.env.json` (JetBrains format), dynamic variables, request metadata (`@name`, `@no-redirect`), response handlers and pre-request scripts, GraphQL and gRPC. And maybe a cooler UI. Kulala got really cool there at the end!
 
 ## Requirements
 
