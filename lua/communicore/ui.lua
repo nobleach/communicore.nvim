@@ -1,6 +1,7 @@
 ---Response display: a reusable buffer shown in a split window.
 
 local config = require("communicore.config")
+local format = require("communicore.format")
 
 local M = {}
 
@@ -39,19 +40,25 @@ local function render(resp, err)
   if err then
     return { "Error:", "", err }, "text"
   end
+  local filetype = detect_filetype(resp)
+  local body = resp.body
+  if filetype == "json" then
+    -- Fall back to the raw body when it is not valid JSON.
+    body = format.json(body) or body
+  end
   local lines = { resp.status_line }
   for _, h in ipairs(resp.headers) do
     table.insert(lines, h.name .. ": " .. h.value)
   end
   table.insert(lines, "")
-  for line in (resp.body .. "\n"):gmatch("(.-)\n") do
+  for line in (body .. "\n"):gmatch("(.-)\n") do
     table.insert(lines, (line:gsub("\r$", "")))
   end
   -- Remove the extra line produced by the trailing newline above.
-  if resp.body == "" or resp.body:sub(-1) == "\n" then
+  if body == "" or body:sub(-1) == "\n" then
     table.remove(lines)
   end
-  return lines, detect_filetype(resp)
+  return lines, filetype
 end
 
 local function open_window()
