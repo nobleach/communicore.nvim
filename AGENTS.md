@@ -6,7 +6,7 @@ communicore.nvim — a Neovim HTTP client for the [.http file format](https://ht
 
 ## Conventions
 
-- **Pure Lua where possible**: `lua/communicore/parser.lua`, `lua/communicore/variables.lua`, `lua/communicore/environment.lua`, `lua/communicore/json.lua`, `lua/communicore/store.lua` and `lua/communicore/references.lua` must not use the `vim` API (`io` is fine), so they stay testable under plain busted and portable outside Neovim.
+- **Pure Lua where possible**: `lua/communicore/parser.lua`, `lua/communicore/variables.lua`, `lua/communicore/environment.lua`, `lua/communicore/json.lua`, `lua/communicore/format.lua`, `lua/communicore/store.lua` and `lua/communicore/references.lua` must not use the `vim` API (`io` is fine), so they stay testable under plain busted and portable outside Neovim.
 - **Pluggable transport**: request execution goes through `communicore.transport` (`register`/`get`). New transports implement `execute(req, opts, callback)` where callback receives `(resp, err)`.
 - **Tests first**: new spec features get a failing spec in `tests/communicore/` before implementation.
 - Formatting: `.stylua.toml` (2-space indent, double quotes, 120 columns).
@@ -33,6 +33,7 @@ lua/communicore/
   variables.lua       -- {{variable}} substitution (pure Lua)
   environment.lua     -- dotenv loading + env/file var precedence (pure Lua)
   json.lua            -- minimal JSON decoder (pure Lua, decode only)
+  format.lua          -- JSON pretty printer, re-indents raw text (pure Lua)
   store.lua           -- in-session named request/response store (pure Lua)
   references.lua      -- {{name.response.body.$.path}} resolution (pure Lua)
   transport/init.lua  -- transport registry
