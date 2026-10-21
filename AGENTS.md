@@ -20,7 +20,7 @@ communicore.nvim — a Neovim HTTP client for the [.http file format](https://ht
 
 - Deferred to later iterations: gRPC, GraphQL, `http-client.env.json` (JetBrains env format), dynamic variables (`$timestamp` etc.), response handler scripts (`> {% ... %}` — the parser already terminates the body at `>`), pre-request scripts, cookies/proxy/SSL options, `{{%var}}` percent-encoding substitution, XPath references (`{{name.response.body.//xpath}}`), JSON encoding (references into non-scalar JSON values resolve to nil).
 - File variables follow JetBrains semantics: an `@var = value` line only applies to requests declared after it.
-- Environments follow the dotenv-flow convention: `.env` (shared) + `.env.<name>` (selected env overrides). Precedence: in-file `@var` > `.env.<name>` > `.env`. Env files are resolved relative to the `.http` file's directory, falling back to cwd.
+- Environments follow the dotenv-flow convention: `.env` (shared) + `.env.<name>` (selected env overrides). Env files are read from the project root (nearest ancestor containing a `.git` entry — `environment.find_root`) first, then from the `.http` file's directory, falling back to cwd. Precedence (highest first): in-file `@var` > local `.env.<name>` > local `.env` > root `.env.<name>` > root `.env`.
 - Response chaining: `# @name` names a request; its request/response pair is stored in-memory after it runs. References follow VS Code syntax (`{{name.response.body.$.path}}`) with jq-style paths (0-based arrays); the `$` is optional.
 
 ## Structure

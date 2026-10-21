@@ -60,12 +60,43 @@ local function merge(base, overlay)
   return base
 end
 
----Loads environment variables from `dir`: `.env` first (shared defaults),
----then `.env.<name>` (when `name` is given), which overrides the shared ones.
+---Checks whether a path exists, whether it is a file or a directory
+---(`.git` is a plain file in worktrees and submodules). Pure Lua.
+---@param path string
+---@return boolean
+local function exists(path)
+  local f = io.open(path, "r")
+  if f then
+    f:close()
+    return true
+  end
+  -- io.open fails on directories on some platforms; os.rename(a, a) only
+  -- checks existence.
+  return os.rename(path, path) == true
+end
+
+---Finds the project root of `dir`: the nearest ancestor (including `dir`
+---itself) containing a `.git` entry. Returns nil when there is none.
+---@param dir string absolute path to start from
+---@return string|nil
+function M.find_root(dir)
+  dir = (dir:gsub("/+$", ""))
+  while dir ~= "" do
+    if exists(dir .. "/.git") then
+      return dir
+    end
+    dir = dir:match("^(.*)/[^/]+$") or ""
+  end
+  return nil
+end
+
+---Loads environment variables from a single directory: `.env` first (shared
+---defaults), then `.env.<name>` (when `name` is given), which overrides the
+---shared ones.
 ---@param dir string directory to look in
 ---@param name string|nil environment name, e.g. "qa"
 ---@return table<string, string>
-function M.load(dir, name)
+local function load_dir(dir, name)
   local vars = {}
   local shared = read_file(dir .. "/.env")
   if shared then
@@ -77,6 +108,24 @@ function M.load(dir, name)
       merge(vars, M.parse_dotenv(specific))
     end
   end
+  return vars
+end
+
+---Loads environment variables for a `.http` file located in `dir`.
+---Variables are read from the project root (nearest ancestor containing a
+---`.git` entry) first, then from `dir` itself; within each directory
+---`.env.<name>` overrides `.env`. Full precedence, lowest to highest:
+---root/.env < root/.env.<name> < dir/.env < dir/.env.<name>.
+---@param dir string directory of the .http file
+---@param name string|nil environment name, e.g. "qa"
+---@return table<string, string>
+function M.load(dir, name)
+  local vars = {}
+  local root = M.find_root(dir)
+  if root and root ~= dir then
+    merge(vars, load_dir(root, name))
+  end
+  merge(vars, load_dir(dir, name))
   return vars
 end
 
