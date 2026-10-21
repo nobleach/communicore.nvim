@@ -102,6 +102,87 @@ describe("environment", function()
     end)
   end)
 
+  describe("find_root", function()
+    ---Creates a project layout: root with a .git marker and a nested subdir.
+    ---@return string root, string sub
+    local function project()
+      local root = tmpdir()
+      vim.fn.mkdir(root .. "/.git", "p")
+      local sub = root .. "/requests/api"
+      vim.fn.mkdir(sub, "p")
+      return root, sub
+    end
+
+    it("returns the directory itself when it contains .git", function()
+      local root = project()
+      assert.are.equal(root, environment.find_root(root))
+    end)
+
+    it("returns the nearest ancestor containing .git", function()
+      local root, sub = project()
+      assert.are.equal(root, environment.find_root(sub))
+    end)
+
+    it("detects .git files (worktrees), not just directories", function()
+      local root = tmpdir()
+      write_file(root .. "/.git", "gitdir: /elsewhere")
+      assert.are.equal(root, environment.find_root(root))
+    end)
+
+    it("returns nil when no ancestor contains .git", function()
+      assert.is_nil(environment.find_root(tmpdir()))
+    end)
+  end)
+
+  describe("load project root fallback", function()
+    ---@return string root, string sub
+    local function project()
+      local root = tmpdir()
+      vim.fn.mkdir(root .. "/.git", "p")
+      local sub = root .. "/requests"
+      vim.fn.mkdir(sub, "p")
+      return root, sub
+    end
+
+    it("loads .env from the project root when the file's directory has none", function()
+      local root, sub = project()
+      write_file(root .. "/.env", "HOST=root.example.com")
+      local vars = environment.load(sub, nil)
+      assert.are.equal("root.example.com", vars.HOST)
+    end)
+
+    it("loads .env.<name> from the project root", function()
+      local root, sub = project()
+      write_file(root .. "/.env.qa", "HOST=qa.example.com")
+      local vars = environment.load(sub, "qa")
+      assert.are.equal("qa.example.com", vars.HOST)
+    end)
+
+    it("lets the file's directory override root values per variable", function()
+      local root, sub = project()
+      write_file(root .. "/.env", "HOST=root.example.com\nSHARED=yes")
+      write_file(sub .. "/.env", "HOST=local.example.com")
+      local vars = environment.load(sub, nil)
+      assert.are.equal("local.example.com", vars.HOST)
+      assert.are.equal("yes", vars.SHARED)
+    end)
+
+    it("prefers the file's .env over the root's .env.<name>", function()
+      local root, sub = project()
+      write_file(root .. "/.env.qa", "HOST=qa-root.example.com")
+      write_file(sub .. "/.env", "HOST=local.example.com")
+      local vars = environment.load(sub, "qa")
+      assert.are.equal("local.example.com", vars.HOST)
+    end)
+
+    it("loads from the root only once when the file sits at the root", function()
+      local root = project()
+      write_file(root .. "/.env", "HOST=root.example.com")
+      local vars = environment.load(root, nil)
+      assert.are.equal("root.example.com", vars.HOST)
+    end)
+  end)
+
   describe("resolve", function()
     it("lets file variables override environment variables", function()
       local vars = environment.resolve({ host = "env.example.com", token = "env-token" }, { host = "file.example.com" })
@@ -157,6 +238,22 @@ describe("environment", function()
       write_file(dir .. "/.env.qa", "SOME_PASS=qa-pass")
       local resolved = resolve_request("GET https://example.com\nAuthorization: Basic {{SOME_PASS}}", dir, "qa")
       assert.are.equal("Basic qa-pass", resolved.headers[1].value)
+    end)
+
+    it("interpolates variables from the project root's .env", function()
+      local root = tmpdir()
+      vim.fn.mkdir(root .. "/.git", "p")
+      local sub = root .. "/requests"
+      vim.fn.mkdir(sub, "p")
+      write_file(root .. "/.env", "HOST=api.example.com\nTOKEN=root-token")
+      write_file(sub .. "/.env", "TOKEN=local-token")
+      local resolved = resolve_request(
+        'POST https://{{HOST}}/login\nContent-Type: application/json\n\n{"token": "{{TOKEN}}"}',
+        sub,
+        nil
+      )
+      assert.are.equal("https://api.example.com/login", resolved.url)
+      assert.are.equal('{"token": "local-token"}', resolved.body)
     end)
   end)
 end)

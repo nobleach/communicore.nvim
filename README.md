@@ -83,12 +83,14 @@ Content-Type: application/json
 
 ### Environments
 
-Environment variables come from dotenv files next to the `.http` file (falling back to the current working directory), following the dotenv-flow / Next.js / Vite convention:
+Environment variables come from dotenv files following the dotenv-flow / Next.js / Vite convention:
 
 - `.env` — shared defaults, always loaded
 - `.env.<name>` — loaded when environment `<name>` is active, overriding shared values
 
-Variable precedence (highest first): in-file `@var` → `.env.<name>` → `.env`.
+Files are read from the project root (the nearest ancestor containing a `.git` entry) first, then from the directory of the `.http` file (falling back to the current working directory); values closer to the request win.
+
+Variable precedence (highest first): in-file `@var` → local `.env.<name>` → local `.env` → project-root `.env.<name>` → project-root `.env`.
 
 Values from these files are referenced with the same `{{name}}` syntax as file variables, and can be interpolated anywhere in the request — URL, headers and body:
 
