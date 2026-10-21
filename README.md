@@ -90,6 +90,21 @@ Environment variables come from dotenv files next to the `.http` file (falling b
 
 Variable precedence (highest first): in-file `@var` → `.env.<name>` → `.env`.
 
+Values from these files are referenced with the same `{{name}}` syntax as file variables, and can be interpolated anywhere in the request — URL, headers and body:
+
+```
+# .env
+HOST=api.example.com
+SOME_PASS=foo
+```
+
+```http
+GET https://{{HOST}}/users/1
+Authorization: Basic {{SOME_PASS}}
+```
+
+With the files above, the request is sent as `GET https://api.example.com/users/1` with an `Authorization: Basic foo` header. Select a named environment with `:CommunicoreEnv qa` (loads `.env` plus `.env.qa`) or `require("communicore").set_env("qa")`.
+
 ### Response chaining
 
 Name a request with `# @name` and later requests can reference its response (VS Code REST Client syntax,

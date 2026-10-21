@@ -115,4 +115,48 @@ describe("environment", function()
       assert.are.same({ a = "1" }, environment.resolve(nil, { a = "1" }))
     end)
   end)
+
+  describe("interpolation end-to-end", function()
+    local parser = require("communicore.parser")
+    local variables = require("communicore.variables")
+
+    ---Mimics init.lua's run_request flow: parse, load env, resolve, substitute.
+    ---@param http string
+    ---@param dir string
+    ---@param env_name string|nil
+    ---@return communicore.Request
+    local function resolve_request(http, dir, env_name)
+      local req = parser.parse(http)[1]
+      local env_vars = environment.load(dir, env_name)
+      req.variables = environment.resolve(env_vars, req.variables)
+      return variables.substitute_request(req)
+    end
+
+    it("interpolates a .env variable into a header", function()
+      local dir = tmpdir()
+      write_file(dir .. "/.env", "SOME_PASS=foo")
+      local resolved = resolve_request("GET https://example.com\nAuthorization: Basic {{SOME_PASS}}", dir, nil)
+      assert.are.equal("Basic foo", resolved.headers[1].value)
+    end)
+
+    it("interpolates .env variables into the url and body", function()
+      local dir = tmpdir()
+      write_file(dir .. "/.env", "HOST=api.example.com\nTOKEN=secret")
+      local resolved = resolve_request(
+        'POST https://{{HOST}}/login\nContent-Type: application/json\n\n{"token": "{{TOKEN}}"}',
+        dir,
+        nil
+      )
+      assert.are.equal("https://api.example.com/login", resolved.url)
+      assert.are.equal('{"token": "secret"}', resolved.body)
+    end)
+
+    it("uses the selected environment's values over shared ones", function()
+      local dir = tmpdir()
+      write_file(dir .. "/.env", "SOME_PASS=shared")
+      write_file(dir .. "/.env.qa", "SOME_PASS=qa-pass")
+      local resolved = resolve_request("GET https://example.com\nAuthorization: Basic {{SOME_PASS}}", dir, "qa")
+      assert.are.equal("Basic qa-pass", resolved.headers[1].value)
+    end)
+  end)
 end)
